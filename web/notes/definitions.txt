@@ -1,0 +1,126 @@
+Task data definitions
+Task
+Queries
+Generators
+
+
+
+
+
+Task
+	Name
+	Description
+	Parent Task
+	Project
+	Needs Resolution
+
+	Status (Enum) -> (
+			Inbox (no prefix), 
+			Deleted (no prefix, not in file),
+			Needs Review (?), 
+			Deferred (... DEFERRED DATE: ), 
+			Incomplete (-), 
+			Dropped (XXX), 
+			Delegated (-> DELEGATE NAME:), 
+			Complete (x)
+			)
+	Tags (array)
+
+	Created Date
+	Updated Date
+
+
+name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
+
+indention
+type
+deferred_to
+delegated_to
+name
+tags
+ID
+filler_a
+filler_b
+filler_c
+filler_d
+
+if _tags AND _tags_alt:
+	error parsing, only one ~() can exist
+if _filler_a OR _filler_b OR _filler_c OR _filler_d:
+	error parsing, after tags/ids nothing can go there or no ~s in task name
+
+
+
+
+
+x = "     - Steve: Test ~this thing: HI? ///~(BASBAS,.efgef , ef?) ~(TEST 2) ~[ABCD]"
+
+- Hi?
+   - HI?
+   - HI? ~[ABC]
+   - HI? ~[ABC] ~(A, B, C, D)
+   - HI? ~(A, B, C, D) ~[ABC]
+
+Saved Queries
+	(using )
+
+
+What kind of storage?
+Is it possible to only have manual resolution?
+What language to use? (something that we can do:
+	- email
+	- REST interface
+	- dropbox
+	- render html views
+	)
+
+
+View all tasks with children where all children are complete
+Sycned keystore across mul;tiple sources
+Send email -> Add to key store, sync
+
+
+Email ->
+-> Dropbox Text ->
+-> Repeating Tasks progress
+-> iPhone app ->
+-> Web app ->
+
+
+- Do something ~(Home, Phone) ~[SOME_ID]
+: More detail goes here, etc, etc
+: Even more detail
+BLOCKED BY: BLOCKED_BY_ID, BLOCKED_BY_ANOTHER_ID
+	- Sub task 1
+	:  Sub task detail
+		x Sub sub task 1
+	- Sub task 2
+
+
+
+
+Project Files
+Contracting/Rehash/Prospect Park.txt
+
+
+
+(\s*)-(.*)
+
+(?P<indention>\s*)-(?P<name>.*).*(~\((.*?)\))?.*(~\[(.*?)\])?.*
+
+(?P<indention>\s*)-(?P<name>.*).*(?P<Tags>~\((.*?)\)).*(?P<ID>~\((.*?)\)).*
+
+
+(?P<indention>\s*)-(?P<name>.*).*(?P<Tags>~\((.*?)\)).*((?P<ID>~\[(.*?)\]))?.*
+
+
+
+
+(?P<indention>\s*)-(?P<name>.*).*((?P<Tags>~\((.*?)\)))?.*((?P<ID>~\[(.*?)\]))?.*
+
+
+
+(?P<indention>\s*)-(?P<name>.*).*?((?P<Tags>~\((.*?)\)))?.*?((?P<ID>~\[(.*?)\]))?.*
+
+
+(?P<indention>\s*)-(?P<name>.*)

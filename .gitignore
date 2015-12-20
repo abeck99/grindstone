@@ -1,0 +1,37 @@
+# assorted
+*.pyc
+*.log
+.DS_Store
+.directory
+todo
+
+# statics
+static/lib
+
+# deploy
+deploy/env
+deploy/awm
+deploy/local
+
+# editors
+sftp-config.json
+
+# vagrant
+.vagrant
+
+# pycharm
+.idea
+apps/django-admin.py
+
+#django debug tool
+_static
+
+*.sublime-project
+*.sublime-workspace
+
+#compiled css
+static/styles/main.css
+
+#compiled js
+static/scripts/all.js
+static/scripts/all.js.map

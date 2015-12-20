@@ -1,0 +1,21 @@
+- Do something ~(Home, Phone) ~[SOME_ID]
+: More detail goes here, etc, etc
+: Even more detail
+BLOCKED BY: BLOCKED_BY_ID, BLOCKED_BY_ANOTHER_ID
+	- Sub task 1
+	:  Sub task detail
+		x Sub sub task 1
+	- Sub task 2
+
+- Root thingy
+  - Me
+   - My monkey
+  - You
+     -you monkey
+   - you other else
+ - Someone else makes 3
+
+x finished task
+-> Steve: Delegated task ~(Home, Office)
+... tomorrow: Something else ~[ABCDEF] ~(Test)
+XXX Blah ~(Test) ~[ABCDEFG]

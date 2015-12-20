@@ -1,0 +1,5 @@
+sudo service couchdb restart
+sudo service firewalld start
+
+
+http://127.0.0.1:5984/_utils/couch_tests.html
