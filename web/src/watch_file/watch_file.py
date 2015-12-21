@@ -5,6 +5,7 @@ from rx.subjects import Subject
 from rx import Observable, Observer
 import reactive
 
+
 class ObserveFileChange(Observer):
     def __init__(self, action):
         self.action = action
@@ -26,7 +27,8 @@ class FileUpdatedSignal(FileSystemEventHandler):
         self.signal = Subject()
 
     def on_modified(self, event):
-        self.signal.on_next(event.src_path)
+        if '.git' not in event.src_path:
+            self.signal.on_next(event.src_path)
 
 
 def new_observer(action, path='.', recursive=True):
@@ -36,9 +38,9 @@ def new_observer(action, path='.', recursive=True):
         15.0).subscribe(
         ObserveFileChange(action))
 
-    observer = Watchdog_Observer()
-    observer.schedule(event_handler, path='.', recursive=True)
-    return observer
+    file_observer = Watchdog_Observer()
+    file_observer.schedule(event_handler, path, recursive)
+    return file_observer
 
 
 if __name__ == "__main__":

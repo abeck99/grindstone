@@ -1,6 +1,7 @@
 pip install rx
 pip install regex
 pip install watchdog
+pip install gitpython
 
 
 Task data definitions
