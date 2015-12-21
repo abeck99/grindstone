@@ -15,7 +15,35 @@ BLOCKED BY: BLOCKED_BY_ID, BLOCKED_BY_ANOTHER_ID
    - you other else
  - Someone else makes 3
 
+Some item
+
+
+- A
+- B
+- C
+: Some more info about C
+- D
+- E
+ - Sub E
+ - Sub E.1
+- F
+G
+H
+I
+J
+
+
+Someone with lots of children
+ child 1
+ child 2
+ child 3
+  child 3.1
+  child 3.2
+  child 3.4
+  x completed child 3.5
+ -> steve: defered child 4
+
 x finished task
 -> Steve: Delegated task ~(Home, Office)
-... tomorrow: Something else ~[ABCDEF] ~(Test)
+... tomorrow: Something else ~[ABCDEF] ~(Test, Test2 Tag)
 XXX Blah ~(Test) ~[ABCDEFG]

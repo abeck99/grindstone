@@ -1,0 +1,48 @@
+- Do something ~(Home, Phone) ~[SOME_ID]
+: More detail goes here, etc, etc
+: Even more detail
+BLOCKED BY: BLOCKED_BY_ID, BLOCKED_BY_ANOTHER_ID
+    - Sub task 1
+    :  Sub task detail
+        x Sub sub task 1
+    - Sub task 2
+
+- Root thingy
+    - Me
+        - My monkey
+    - You
+        - you monkey
+        - you other else
+    - Someone else makes 3
+
+Some item
+- A
+- B
+- C
+: Some more info about C
+- D
+- E
+    - Sub E
+ABCDEF
+    - Sub E.1
+
+- F
+
+G
+H
+I
+J
+Someone with lots of children
+    child 1
+    child 2
+    child 3
+        child 3.1
+        child 3.2
+        child 3.4
+        x completed child 3.5
+    -> steve: defered child 4
+
+x finished task
+-> Steve: Delegated task ~(Home, Office)
+... tomorrow: Something else ~(Test, Test2 Tag) ~[ABCDEF]
+XXX Blah ~(Test) ~[ABCDEFG]

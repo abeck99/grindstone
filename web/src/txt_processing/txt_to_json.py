@@ -1,15 +1,5 @@
 import regex
-
-prefix_to_state_enum = {
-    '-': 'Incomplete',
-    '?': 'Needs Review',
-    '//': 'Paused',
-    '...': 'Deferred',
-    'XXX': 'Dropped',
-    '->': 'Delegated',
-    'x': 'Complete',
-    None: 'Inbox',
-}
+from common import convert_prefix_to_state
 
 # name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?P<deferred_to>(?:.*?:|))|(?P<type>XXX)|(?P<type>->)(?P<delegated_to>(?:.*?:|))|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
 name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
@@ -52,7 +42,7 @@ class TaskObject(object):
             return
         self.is_root = False
 
-        self.status = prefix_to_state_enum.get(d['type'], prefix_to_state_enum[None])
+        self.status = convert_prefix_to_state(d['type'])
         self.deferred_to = string_or_none_from_dict(d, 'deferred_to')
         self.delegated_to = string_or_none_from_dict(d, 'delegated_to')
         self.name = string_or_none_from_dict(d, 'name')
