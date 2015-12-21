@@ -24,9 +24,13 @@ class ObserveFileChange(Observer):
 
 class FileUpdatedSignal(FileSystemEventHandler):
     def __init__(self):
+        self.on_modified = self.send_event_if_needed
+        self.on_moved = self.send_event_if_needed
+        self.on_created = self.send_event_if_needed
+        self.on_deleted = self.send_event_if_needed
         self.signal = Subject()
 
-    def on_modified(self, event):
+    def send_event_if_needed(self, event):
         if '.git' not in event.src_path:
             self.signal.on_next(event.src_path)
 
@@ -35,7 +39,7 @@ def new_observer(action, path='.', recursive=True):
     event_handler = FileUpdatedSignal()
 
     event_handler.signal.accumulated_debounce(
-        15.0).subscribe(
+        10.0).subscribe(
         ObserveFileChange(action))
 
     file_observer = Watchdog_Observer()

@@ -17,10 +17,13 @@ if __name__ == "__main__":
         repo.index.commit('Pre Process: ' + human_readable_timestamp)
 
         for fn in file_list:
-            with open(fn) as f:
-                out_json = txt_processing.convert_txt_to_json(f.read())
-            with open(fn, 'w') as f:
-                f.write(txt_processing.convert_json_to_txt(out_json))
+            try:
+                with open(fn) as f:
+                    out_json = txt_processing.convert_txt_to_json(f.read())
+                with open(fn, 'w') as f:
+                    f.write(txt_processing.convert_json_to_txt(out_json))
+            except IOError as e:
+                print 'Error: ' + str(e)
 
         repo.git.add('-A')
         repo.index.commit('Post Process: ' + human_readable_timestamp)
