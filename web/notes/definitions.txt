@@ -1,16 +1,87 @@
+TEXT MONITORING FLOW::::::::::::::::::::
+
+REQUIRE dropbox initial sync before parsing anything
+(IE wait for initial sync then start observing file changes)
+- Dropbox sync doesn't upload
+- Observe changes in DB->
+  - Do a diff, what's added, removed, changed and add to DB
+
+Observe changes in DB
+ -> convert all IDs to strip Project name
+ -> render to text
+ -> IMPORTANT: check for changes when adding to git, if none return
+	 -> OTHERWISE:
+	 -> git commit
+ 	 -> upload to dropbox
+
+PROJECTS == FOLDERS
+
+
+Dropbox update loop:
+ -> On startup, check every file as below (IE parse to save to db if changes)
+ -> ping delta every 5 minutes
+ -> ignore anything in the .git directory or _id_count.txt (alternatively, just look for todo.txt)
+ -> if no files changed, go to 1
+ 	-> If files changed...
+ 	-> git commit
+ 	-> save
+ 	-> parse
+ 	-> set project on all files
+ 	-> Give a new ID to any new objects (increment a counter saved in a _id_count.txt)
+ 	-> convert IDs to include project
+ 	-> Check against DB - determine a) what's added, b) what's updated, c) what's deleted
+ 	-> Save to DB using those above
+ 	-> upload git repo to dropbox
+
+Monitor git changes in filesystem
+ -> upload git repo to dropbox
+
+
+Views:
+ - Items To Process
+ 	- Status in Inbox, Needs Review, or delegated and it's been 2 days (i dunno..)
+ 	- Anything marked Needs Resolution
+ - Available Next Actions
+ 	- Status in Deferred (and date has passed), incomplete
+ 	- All items in blocked by (and children) are marked as deleted, complete, dropped, or dont exist
+ 	- Project is not on hold, and no parent is deferred
+ - Delegated
+ 	- status is delegated
+ - Projects on hold
+ - root projects
+ - Deferred items over the next 2 weeks (calendar view)
+
+Dashboard
+ - List of items to process
+ - List of Next Actions
+ - List of Delegated Actions
+ - Project Navigator
+ - Calendar over the next 2 weeks
+ - Simple search by anything
+ - Custom Map/Reduce Search
+
+
+
+
+
+
+
+KPIs
+ - Project - Total tasks, total incomplete, total completed
+
 pip install rx
 pip install regex
 pip install watchdog
 pip install gitpython
 
 
+ACCESS_token for dropbox
+***REMOVED***
+
 Task data definitions
 Task
 Queries
 Generators
-
-
-
 
 
 Task

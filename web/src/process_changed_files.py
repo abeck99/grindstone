@@ -5,6 +5,9 @@ if __name__ == "__main__":
     import txt_processing
     import watch_file
     import time
+    import dropbox_sync
+
+    dropbox_sync.testListing()
 
     path = sys.argv[1]
     repo = git.repo.Repo(path.replace('$HOME', '~'))

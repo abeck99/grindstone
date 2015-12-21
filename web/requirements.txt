@@ -1,1 +1,9 @@
 pycouchdb
+rx
+regex
+watchdog
+gitpython
+dropbox
+tzlocal
+parsedatetime
+iso8601
