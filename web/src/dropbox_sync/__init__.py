@@ -43,7 +43,10 @@ from rx import Observable, Observer
 def sync_dropbox_task():
     syncer = DropboxSyncer(dropbox_folder, access_token[0])
     def sync(x):
-        syncer.sync()
+        try:
+            syncer.sync()
+        except Exception as e:
+            print "Error in main sync loop! " + str(e)
 
     return Observable.timer(5000, 5000).subscribe(sync)
 
