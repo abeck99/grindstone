@@ -21,7 +21,8 @@ def ensure_dir(dirname):
 
 
 class FilesChangedFromServerNotification(object):
-    def __init__(self, added, removed):
+    def __init__(self, root_folder, added, removed):
+        self.root_folder = root_folder
         self.added = added
         self.removed = removed
 
@@ -251,5 +252,7 @@ class DropboxSyncer(object):
                         break
 
         if len(files_added_from_remote) > 0 or len(files_deleted_from_remote) > 0:
-            notif = FilesChangedFromServerNotification(files_added_from_remote, files_deleted_from_remote)
+            notif = FilesChangedFromServerNotification(self.local_folder,
+                                                       files_added_from_remote,
+                                                       files_deleted_from_remote)
             self.changes_from_remote_signal.on_next(notif)
