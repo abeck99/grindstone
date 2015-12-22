@@ -48,6 +48,6 @@ def sync_dropbox_task():
         except Exception as e:
             print "Error in main sync loop! " + str(e)
 
-    return Observable.timer(5000, 5000).subscribe(sync)
+    return Observable.timer(5000, 5000).subscribe(sync), syncer.changes_from_remote_signal
 
 

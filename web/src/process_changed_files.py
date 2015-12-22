@@ -7,7 +7,12 @@ if __name__ == "__main__":
     import time
     import dropbox_sync
 
-    dropbox_sync.sync_dropbox_task()
+    dropbox_disposable, changes_signal = dropbox_sync.sync_dropbox_task()
+
+    def changes_from_dropbox(notif):
+        print "Added: " + str(notif.added)
+        print "Removed: " + str(notif.removed)
+    changes_signal.subscribe(changes_from_dropbox)
 
     path = sys.argv[1]
     repo = git.repo.Repo(path.replace('$HOME', '~'))

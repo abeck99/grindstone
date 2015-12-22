@@ -20,6 +20,11 @@ def ensure_dir(dirname):
         os.makedirs(dirname)
 
 
+class FilesChangedFromServerNotification(object):
+    def __init__(self, added, removed):
+        self.added = added
+        self.removed = removed
+
 # TODO: Make this use gevents
 class DropboxSyncer(object):
     def __init__(self, local_folder, access_token):
@@ -32,6 +37,7 @@ class DropboxSyncer(object):
         self.files_synced_from_dropbox = {}
         self.client = dropbox.Dropbox(access_token)
         self.cursor = None
+        self.sync_count = 0
         self.initial_sync()
 
     # Note: deleted_names, final path component is always all lower case
@@ -91,7 +97,11 @@ class DropboxSyncer(object):
     def remote_to_local_name(self, remote_name):
         return self.normalize_file_path(os.path.join(self.local_folder, remote_name[1:]))
 
+    def temp_extension(self, message):
+        return '.' + datetime.datetime.now().isoformat().replace(':', '.') + message
+
     def sync_folder_with_entries(self, entries):
+        self.sync_count += 1
         files_added_from_remote = []
         files_deleted_from_remote = []
         id_to_name, deleted_names = self.dropbox_entries_to_case_sensitive_names(entries)
@@ -147,16 +157,21 @@ class DropboxSyncer(object):
 
             data = res.content
             ensure_file_location(local_name)
-            if os.path.exists(local_name):
+            # Ignore this check for the initial sync
+            if self.sync_count > 1 and os.path.exists(local_name):
                 mtime = os.path.getmtime(local_name)
                 with open(local_name, 'rb') as f:
                     local_data = f.read()
-                    if data != local_data:
+                    cached_hash = self.files_synced_from_dropbox.get(local_name, None)
+                    current_hash = hashlib.sha224(local_data).hexdigest()
+                    local_hash_changed = cached_hash is None or cached_hash != current_hash
+                    if local_hash_changed and local_data != data:
                         print "Conflict with existing file! Backing it up"
                         while True:
                             try:
                                 print 'Uploading backup of: ' + remote_name
-                                self.client.files_upload(local_data, remote_name + ".CONFLICT", dropbox.files.WriteMode.add,
+                                self.client.files_upload(local_data, remote_name + self.temp_extension('CONFLICT'),
+                                                         dropbox.files.WriteMode.add,
                                                          False,
                                                          datetime.datetime(*time.gmtime(mtime)[:6]), False)
                                 break
@@ -166,7 +181,7 @@ class DropboxSyncer(object):
                                 time.sleep(10.0)
                             except dropbox.exceptions.ApiError as err:
                                 print "Error when backing up, just saving locally... " + str(err)
-                                with open(local_name+".CONFLICT", 'wb') as f1:
+                                with open(local_name + self.temp_extension('CONFLICT'), 'wb') as f1:
                                     f1.write(local_data)
                                 break
 
@@ -213,7 +228,7 @@ class DropboxSyncer(object):
                             time.sleep(10.0)
                         except dropbox.exceptions.ApiError as err:
                             print "Error when uploading (probably a mode issue?)... Saving a backup" + str(err)
-                            with open(fn+".FAILED_UPLOAD", 'wb') as f1:
+                            with open(fn + self.temp_extension('FAILED_UPLOAD'), 'wb') as f1:
                                 f1.write(data)
                             break
 
@@ -236,7 +251,5 @@ class DropboxSyncer(object):
                         break
 
         if len(files_added_from_remote) > 0 or len(files_deleted_from_remote) > 0:
-            data_object = object()
-            data_object.added = files_added_from_remote
-            data_object.removed = files_deleted_from_remote
-            self.changes_from_remote_signal.on_next(data_object)
+            notif = FilesChangedFromServerNotification(files_added_from_remote, files_deleted_from_remote)
+            self.changes_from_remote_signal.on_next(notif)
