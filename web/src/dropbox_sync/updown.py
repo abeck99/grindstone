@@ -1,7 +1,6 @@
 import datetime
 import os
 import shutil
-import git
 import time
 
 import dropbox
@@ -9,6 +8,7 @@ from dropbox.files import FileMetadata, FolderMetadata, DeletedMetadata
 import hashlib
 import contextlib
 
+from rx.subjects import Subject
 
 def ensure_file_location(path):
     dirname = os.path.dirname(path)
@@ -27,11 +27,7 @@ class DropboxSyncer(object):
         self.local_folder = os.path.expanduser(local_folder)
         ensure_dir(self.local_folder)
 
-        try:
-            self.repo = git.repo.Repo(self.local_folder)
-        except git.exc.InvalidGitRepositoryError:
-            self.repo = git.repo.Repo.init(self.local_folder)
-
+        self.changes_from_remote_signal = Subject()
         self.initial_names = {}
         self.files_synced_from_dropbox = {}
         self.client = dropbox.Dropbox(access_token)
@@ -96,7 +92,8 @@ class DropboxSyncer(object):
         return self.normalize_file_path(os.path.join(self.local_folder, remote_name[1:]))
 
     def sync_folder_with_entries(self, entries):
-        changes = False
+        files_added_from_remote = []
+        files_deleted_from_remote = []
         id_to_name, deleted_names = self.dropbox_entries_to_case_sensitive_names(entries)
 
         local_deleted_names = [self.remote_to_local_name(name) for name in deleted_names]
@@ -125,7 +122,7 @@ class DropboxSyncer(object):
                         print '\tDelete Success!'
                         if full_path in self.files_synced_from_dropbox:
                             del self.files_synced_from_dropbox[full_path]
-                        changes = True
+                        files_deleted_from_remote.append(local_deleted_name)
 
         for remote_name, local_name in local_names_to_download.iteritems():
             if not remote_name.endswith('.txt') or '.git' in remote_name:
@@ -147,7 +144,6 @@ class DropboxSyncer(object):
                     break
             if skip:
                 continue
-
 
             data = res.content
             ensure_file_location(local_name)
@@ -181,13 +177,7 @@ class DropboxSyncer(object):
                 print "Failed saving file!"
                 pass
             self.files_synced_from_dropbox[local_name] = hashlib.sha224(data).hexdigest()
-            changes = True
-
-        if changes:
-            self.repo.git.add('-A')
-            human_readable_timestamp = datetime.datetime.now(
-                ).strftime('%Y-%m-%d %H:%M:%S')
-            self.repo.index.commit('Pulled from Dropbox: ' + human_readable_timestamp)
+            files_added_from_remote.append(local_name)
 
         for dirname, dirs, files in os.walk(self.local_folder):
             for fn in files:
@@ -244,3 +234,9 @@ class DropboxSyncer(object):
                     except dropbox.exceptions.ApiError as err:
                         print "Error when marking file as deleted... " + str(err)
                         break
+
+        if len(files_added_from_remote) > 0 or len(files_deleted_from_remote) > 0:
+            data_object = object()
+            data_object.added = files_added_from_remote
+            data_object.removed = files_deleted_from_remote
+            self.changes_from_remote_signal.on_next(data_object)
