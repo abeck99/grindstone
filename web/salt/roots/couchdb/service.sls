@@ -6,8 +6,8 @@ include:
 
 couchdb_install_service:
   file.copy:
-    - name: /etc/init.d/couchdb
-    - source: {{couchdb.tmp_dir}}/apache-couchdb-{{couchdb.version}}/etc/init/couchdb
+    - name: /lib/systemd/system/couchdb.service
+    - source: /salt/etc/couchdb.service
     - force: True
     - require:
       - cmd: couchdb_install
@@ -17,14 +17,8 @@ couchdb_install_service:
       - file: /usr/local/var/log/couchdb
       - file: /usr/local/var/run/couchdb
 
-service_set_executable:
-  cmd.run:
-    - name: chmod +x /etc/init.d/couchdb
-    - cwd:  {{couchdb.tmp_dir}}/apache-couchdb-{{couchdb.version}}
-    - require:
-      - file: couchdb_install_service
 
 couchdb:
   service.running:
     - require:
-      - cmd: service_set_executable
+      - file: couchdb_install_service
