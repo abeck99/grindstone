@@ -10,6 +10,13 @@ then reload vagrant
 
 
 
+copy couchdb service script to /etc/init.d
+mnake executible
+
+
+
+
+
 AFTER PROVISIONING:
 
 sudo firewalld
@@ -17,9 +24,13 @@ sudo firewall-cmd --permanent --zone=public --add-port=5984/http
 sudo firewall-cmd --permanent --zone=public --add-service=http
 sudo firewall-cmd --reload
 
+sudo firewall-cmd --zone=public --add-port=5984/http
+sudo firewall-cmd --zone=public --add-service=http
+sudo firewall-cmd --reload
+
 
 sudo service couchdb restart
-sudo service firewalld start
+sudo service firewalld restart
 
 
 

@@ -7,10 +7,10 @@ Upgrade pip:
     - require:
       - pkg: python-pip
 
-pyOpenSSL:
+python-openssl:
   pkg.installed
 
-python-devel:
+python-dev:
   pkg.installed
 
 virtualenv:
@@ -18,7 +18,7 @@ virtualenv:
         - require:
             - pkg: python-pip
             - cmd: Upgrade pip
-            - pkg: pyOpenSSL
+            - pkg: python-openssl
 
 virtualenvwrapper:
     pip.installed:

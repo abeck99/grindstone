@@ -2,6 +2,6 @@ base:
     '*':
         - common
         - epel
-        - couchdb
+        - couchdb_pkg
         - python-pip
         - web-app
