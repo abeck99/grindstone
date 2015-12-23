@@ -10,6 +10,9 @@ Upgrade pip:
 pyOpenSSL:
   pkg.installed
 
+python-devel:
+  pkg.installed
+
 virtualenv:
     pip.installed:
         - require:

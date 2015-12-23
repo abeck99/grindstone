@@ -1,0 +1,2 @@
+couchdb:
+  pkg.installed

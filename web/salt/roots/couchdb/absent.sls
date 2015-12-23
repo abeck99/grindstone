@@ -8,4 +8,3 @@ couchdb_remove:
     - require:
       - cmd: couchdb_install
 
-

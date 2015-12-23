@@ -22,7 +22,10 @@ Vagrant.configure(2) do |config|
     salt.verbose = true
   end
 
-  config.vm.network "forwarded_port", guest: 5984, host: 5984
+  config.vm.network "forwarded_port", guest: 5984, host: 5985
+
+  config.vm.synced_folder "src/", "/web-app"
+  config.vm.synced_folder "salt/", "/salt"
 
   # The most common configuration options are documented and commented below.
   # For a complete reference, please see the online documentation at

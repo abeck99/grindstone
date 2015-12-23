@@ -2,10 +2,12 @@ include:
   - .install
   - .user
 
+{% from "couchdb/map.jinja" import couchdb with context %}
+
 couchdb_install_service:
   file.copy:
     - name: /etc/init.d/couchdb
-    - source: /usr/local/etc/init.d/couchdb
+    - source: {{couchdb.tmp_dir}}/apache-couchdb-{{couchdb.version}}/etc/init/couchdb
     - force: True
     - require:
       - cmd: couchdb_install
@@ -15,8 +17,14 @@ couchdb_install_service:
       - file: /usr/local/var/log/couchdb
       - file: /usr/local/var/run/couchdb
 
+service_set_executable:
+  cmd.run:
+    - name: chmod +x /etc/init.d/couchdb
+    - cwd:  {{couchdb.tmp_dir}}/apache-couchdb-{{couchdb.version}}
+    - require:
+      - file: couchdb_install_service
 
 couchdb:
   service.running:
     - require:
-      - file: couchdb_install_service
+      - cmd: service_set_executable

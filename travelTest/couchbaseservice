@@ -48,11 +48,21 @@ sudo firewall-cmd --permanent --zone=public --add-service=http
 sudo firewall-cmd --reload
 
 
+sudo firewall-cmd --permanent --zone=public --add-service=http
+
+sudo firewall-cmd --permanent --zone=public --add-port=5984/tcp
+sudo firewall-cmd --permanent --zone=public --add-port=5984/http
 
 
 > echo 'export WORKON_HOME=$HOME/.virtualenvs' >> ~/.bashrc
 > echo 'source /usr/local/bin/virtualenvwrapper.sh' >> ~/.bashrc
 > source ~/.bashrc
+
+
+
+sudo firewall-cmd --zone=public --add-service=http
+sudo firewall-cmd --zone=public --add-port=5984/tcp
+sudo firewall-cmd --reload
 
 
 

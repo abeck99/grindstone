@@ -1,8 +1,8 @@
 file_client: local
 file_roots:
   base:
-    - /home/vagrant/sync/salt/roots
+    - /salt/roots
 
 pillar_roots:
  base:
-    - /home/vagrant/sync/salt/pillar
+    - /salt/pillar

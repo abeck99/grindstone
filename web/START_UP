@@ -1,5 +1,59 @@
+BEFORE VAGRANT UP IS SUCCESSFUL
+
+vagrant plugin install vagrant-vbguest
+
+if guest extensions fail to install:
+yum update
+yum install kernel-headers kernel-devel
+
+then reload vagrant
+
+
+
+AFTER PROVISIONING:
+
+sudo firewalld
+sudo firewall-cmd --permanent --zone=public --add-port=5984/http
+sudo firewall-cmd --permanent --zone=public --add-service=http
+sudo firewall-cmd --reload
+
+
 sudo service couchdb restart
 sudo service firewalld start
 
 
+
+
 http://127.0.0.1:5984/_utils/couch_tests.html
+
+
+
+
+
+
+
+
+
+
+sudo salt-call --local state.highstate -l debug
+
+http://developer.couchbase.com/documentation/server/current/travel-app/index.html
+http://www.thegeekstuff.com/2012/06/install-couch-db/
+
+
+
+ADDED TO SALT::::
+yum groupinstall "Development tools"
+
+> echo 'export WORKON_HOME=$HOME/.virtualenvs' >> ~/.bashrc
+> echo 'source /usr/local/bin/virtualenvwrapper.sh' >> ~/.bashrc
+> source ~/.bashrc
+
+
+sudo yum -y install wget
+wget http://erlang.org/download/otp_src_R16B02.tar.gz
+tar zxvf otp_src_R16B02.tar.gz
+cd otp_src_R16B02
+./configure && make && sudo make install
+
+

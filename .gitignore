@@ -35,3 +35,6 @@ static/styles/main.css
 #compiled js
 static/scripts/all.js
 static/scripts/all.js.map
+
+
+web/settings/config.ini

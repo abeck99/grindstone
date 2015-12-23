@@ -201,3 +201,32 @@ Contracting/Rehash/Prospect Park.txt
 
 
 (?P<indention>\s*)-(?P<name>.*)
+
+
+
+
+
+
+
+
+
+
+Remove access-token, app-secret, app-token from py file, copy to the side
+check in
+bfg - get rid of those text files
+
+add config to gitignore
+
+ensure .idea folder is removed from folder
+upload to github (ensure app tokens are scrubbed...)
+
+Remove ~/Documents/Projects/TodoApp
+
+
+
+
+
+
+
+
+
