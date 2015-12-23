@@ -59,7 +59,7 @@ if __name__ == "__main__":
         pass
 
 
-
+    """
     path = sys.argv[1]
     repo = git.repo.Repo(path.replace('$HOME', '~'))
     
@@ -91,3 +91,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         observer.stop()
     observer.join()
+    """
