@@ -23,9 +23,11 @@ Vagrant.configure(2) do |config|
   end
 
   config.vm.network "forwarded_port", guest: 5984, host: 5985
+  config.vm.network "forwarded_port", guest: 8000, host: 5986
 
   config.vm.synced_folder "src/", "/web-app"
   config.vm.synced_folder "salt/", "/salt"
+  config.vm.synced_folder "settings/", "/web-app-settings"
 
   # The most common configuration options are documented and commented below.
   # For a complete reference, please see the online documentation at

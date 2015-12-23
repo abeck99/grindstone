@@ -2,19 +2,17 @@ import dropbox
 import json
 import os
 from updown import DropboxSyncer
+import yaml
 
-app_key = '***REMOVED***'
-app_secret = '***REMOVED***'
 
-fn = '~/.ab-todo-dropbox'
-dropbox_folder = '~/dropbox-notes'
-access_token = [None]
-try:
-    with open(fn) as f:
-        access_token[0] = json.loads(f.read())['access_token']
-except Exception as e:
-    access_token[0] = '***REMOVED***'
-    print 'Error loading access token: ' + str(e)
+settings_file = '/web-app-settings/config.ini'
+settings = yaml.load(open(settings_file).read())
+
+app_key = settings['dropbox-app-key']
+app_secret = settings['dropbox-app-secret']
+
+access_token = settings['dropbox-access-token']
+dropbox_folder = settings['dropbox-folder']
 
 
 def ensure_dir(dirname):
@@ -31,22 +29,18 @@ def start_flow():
 
 def end_flow(flow, code):
     new_access_token, user_id = flow.finish(code)
-    access_token[0] = new_access_token
-    with open('~/.ab-todo-dropbox', 'w') as f:
-        f.write(json.dumps({
-            "access_token": new_access_token,
-            "user_id": user_id,
-        }))
+    print new_access_token
 
 
 from rx import Observable, Observer
 def sync_dropbox_task():
-    syncer = DropboxSyncer(dropbox_folder, access_token[0])
+    syncer = DropboxSyncer(dropbox_folder, access_token)
     def sync(x):
-        try:
-            syncer.sync()
-        except Exception as e:
-            print "Error in main sync loop! " + str(e)
+        syncer.sync()
+        # try:
+        #     syncer.sync()
+        # except Exception as e:
+        #     print "Error in main sync loop! " + str(e)
 
     return Observable.timer(5000, 5000).subscribe(sync), syncer.changes_from_remote_signal
 

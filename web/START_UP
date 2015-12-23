@@ -1,17 +1,18 @@
-BEFORE VAGRANT UP IS SUCCESSFUL
 
-vagrant plugin install vagrant-vbguest
+in local.ini, add to [httpd]
+port = 5984
+bind_address = 0.0.0.0
 
-if guest extensions fail to install:
-yum update
-yum install kernel-headers kernel-devel
-
-then reload vagrant
-
+sudo service couchdb restart
+cd /web-app-deps/fauxton
+sudo grunt dev
 
 
-copy couchdb service script to /etc/init.d
-mnake executible
+
+
+
+
+
 
 
 
@@ -68,3 +69,18 @@ cd otp_src_R16B02
 ./configure && make && sudo make install
 
 
+FIXED WHEN MOVED TO UBUNTU
+BEFORE VAGRANT UP IS SUCCESSFUL
+
+vagrant plugin install vagrant-vbguest
+
+if guest extensions fail to install:
+yum update
+yum install kernel-headers kernel-devel
+
+then reload vagrant
+
+
+
+copy couchdb service script to /etc/init.d
+mnake executible

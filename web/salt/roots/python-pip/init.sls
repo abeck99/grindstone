@@ -34,6 +34,6 @@ virtualenv-envs-1:
 virtualenv-envs-2:
   file.append:
     - name: /home/vagrant/.bashrc
-    - text: source /usr/bin/virtualenvwrapper.sh
+    - text: source /usr/local/bin/virtualenvwrapper.sh
     - require:
         - file: virtualenv-envs-1

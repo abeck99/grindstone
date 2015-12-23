@@ -1,0 +1,8 @@
+dropbox-app-key:
+  xxx
+dropbox-app-secret:
+  xxx
+dropbox-access-token:
+  xxx
+dropbox-folder:
+  ~/dropbox-notes
