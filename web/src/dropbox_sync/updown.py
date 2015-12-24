@@ -39,6 +39,7 @@ class DropboxSyncer(object):
         self.client = dropbox.Dropbox(access_token)
         self.cursor = None
         self.sync_count = 0
+        self.ignore_next_delete = []
 
         if start_from_clean_tree:
             self.clean_dropbox()
@@ -96,7 +97,7 @@ class DropboxSyncer(object):
                     print 'Failed getting initial file list, trying again in 10s...'
                     time.sleep(10.0)
             self.cursor = result.cursor
-            id_to_name, deleted_names = self.dropbox_entries_to_case_sensitive_names(result.entries)
+            self.dropbox_entries_to_case_sensitive_names(result.entries)
             for d in result.entries:
                 if not isinstance(d, FileMetadata):
                     continue
@@ -105,6 +106,7 @@ class DropboxSyncer(object):
                 while True:
                     try:
                         self.client.files_delete(d.path_lower)
+                        self.ignore_next_delete.append(d.path_lower)
                         break
                     except dropbox.exceptions.HttpError as err:
                         print err
@@ -113,9 +115,9 @@ class DropboxSyncer(object):
                     except dropbox.exceptions.ApiError as err:
                         print "Error when marking file as deleted during initial clean... " + str(err)
                         break
+            print 'Removing root tree for initial clean'
             shutil.rmtree(self.local_folder)
             ensure_dir(self.local_folder)
-
 
     def initial_sync(self):
         with self.sync_context():
@@ -163,25 +165,36 @@ class DropboxSyncer(object):
     def temp_extension(self, message):
         return '.' + datetime.datetime.now().isoformat().replace(':', '.') + message
 
+    def ignore_keywords(self):
+        return ['conflicted copy', '.git']
+
+    def valid_file_to_process(self, fn):
+        return fn.endswith('.txt') and not any([kw in fn for kw in self.ignore_keywords()])
+
     def sync_folder_with_entries(self, entries):
         self.sync_count += 1
         files_added_from_remote = []
         files_deleted_from_remote = []
         id_to_name, deleted_names = self.dropbox_entries_to_case_sensitive_names(entries)
 
-        local_deleted_names = [self.remote_to_local_name(name) for name in deleted_names]
+        local_and_remote_deleted_names = [(self.remote_to_local_name(name), name.lower()) for name in deleted_names]
         local_names_to_download = {}
         for d in entries:
             if isinstance(d, FileMetadata):
                 local_names_to_download[d.path_lower] = self.remote_to_local_name(id_to_name[d.id])
 
-        for local_deleted_name in local_deleted_names:
+        for local_deleted_name, remote_deleted_name in local_and_remote_deleted_names:
             dirname, filename = os.path.split(local_deleted_name)
             files_in_path = None
             try:
                 files_in_path = os.listdir(dirname)
             except Exception:
                 pass
+            if remote_deleted_name in self.ignore_next_delete:
+                self.ignore_next_delete.remove(remote_deleted_name)
+                print 'Skipping file since it was triggered by us'
+                continue
+
             print 'Attempting to delete: ' + local_deleted_name
             if files_in_path is not None:
                 for existing_file_name in files_in_path:
@@ -198,7 +211,7 @@ class DropboxSyncer(object):
                         files_deleted_from_remote.append(local_deleted_name)
 
         for remote_name, local_name in local_names_to_download.iteritems():
-            if not remote_name.endswith('.txt') or '.git' in remote_name:
+            if not self.valid_file_to_process(remote_name):
                 continue
             # TODO: This blocks everything, maybe a better way to do this???
             skip = False
@@ -254,13 +267,15 @@ class DropboxSyncer(object):
             except OSError:
                 print "Failed saving file!"
                 pass
-            self.files_synced_from_dropbox[local_name] = hashlib.sha224(data).hexdigest()
-            files_added_from_remote.append(local_name)
+            data_hash = hashlib.sha224(data).hexdigest()
+            if self.files_synced_from_dropbox[local_name] != data_hash:
+                self.files_synced_from_dropbox[local_name] = hashlib.sha224(data).hexdigest()
+                files_added_from_remote.append(local_name)
 
         for dirname, dirs, files in os.walk(self.local_folder):
             for fn in files:
                 fn = os.path.join(dirname, fn)
-                if not fn.endswith('.txt') or '.git' in fn:
+                if not self.valid_file_to_process(fn):
                     continue
 
                 fn = self.normalize_file_path(fn)
@@ -303,6 +318,7 @@ class DropboxSyncer(object):
                 while True:
                     try:
                         self.client.files_delete(remote_name)
+                        self.ignore_next_delete.append(remote_name)
                         del self.files_synced_from_dropbox[fn]
                         break
                     except dropbox.exceptions.HttpError as err:
