@@ -1,24 +1,23 @@
 import dropbox
-import json
 import os
 from updown import DropboxSyncer
-import yaml
+from settings import settings
 
-
-settings_file = '/web-app-settings/config.ini'
-settings = yaml.load(open(settings_file).read())
 
 app_key = settings['dropbox-app-key']
 app_secret = settings['dropbox-app-secret']
 
 access_token = settings['dropbox-access-token']
-dropbox_folder = settings['dropbox-folder']
+dropbox_folder = os.path.expanduser(settings['dropbox-folder'])
 
 
 def ensure_dir(dirname):
     if not os.path.exists(dirname):
-        os.makedirs(dirname, exist_ok=True)
+        os.makedirs(dirname)
 
+def ensure_file_location(path):
+    dirname = os.path.dirname(path)
+    ensure_dir(dirname)
 
 def start_flow():
     flow = dropbox.client.DropboxOAuth2FlowNoRedirect(app_key, app_secret)
@@ -33,8 +32,8 @@ def end_flow(flow, code):
 
 
 from rx import Observable, Observer
-def sync_dropbox_task():
-    syncer = DropboxSyncer(dropbox_folder, access_token)
+def sync_dropbox_task(start_from_clean_tree):
+    syncer = DropboxSyncer(dropbox_folder, access_token, start_from_clean_tree)
     def sync(x):
         syncer.sync()
         # try:

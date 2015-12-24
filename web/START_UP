@@ -1,4 +1,4 @@
-
+USe couchdb -c to find ini
 in local.ini, add to [httpd]
 port = 5984
 bind_address = 0.0.0.0

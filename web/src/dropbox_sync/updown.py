@@ -28,7 +28,7 @@ class FilesChangedFromServerNotification(object):
 
 # TODO: Make this use gevents
 class DropboxSyncer(object):
-    def __init__(self, local_folder, access_token):
+    def __init__(self, local_folder, access_token, start_from_clean_tree):
         self.pending_sync = True
         self.local_folder = os.path.expanduser(local_folder)
         ensure_dir(self.local_folder)
@@ -39,7 +39,11 @@ class DropboxSyncer(object):
         self.client = dropbox.Dropbox(access_token)
         self.cursor = None
         self.sync_count = 0
-        self.initial_sync()
+
+        if start_from_clean_tree:
+            self.clean_dropbox()
+        else:
+            self.initial_sync()
 
     # Note: deleted_names, final path component is always all lower case
     def dropbox_entries_to_case_sensitive_names(self, entries):
@@ -69,10 +73,61 @@ class DropboxSyncer(object):
         finally:
             self.pending_sync = False
 
+    @contextlib.contextmanager
+    def retry_on_network_error(self, debug_context):
+        while True:
+            try:
+                yield
+                break
+            except dropbox.exceptions.HttpError as err:
+                print err
+                print str(debug_context) + 'trying again in 10s...'
+                time.sleep(10.0)
+
+    def clean_dropbox(self):
+        with self.sync_context():
+            print 'Starting INITIAL CLEAN TREE'
+            while True:
+                try:
+                    result = self.client.files_list_folder('', recursive=True, include_deleted=True)
+                    break
+                except dropbox.exceptions.HttpError as err:
+                    print err
+                    print 'Failed getting initial file list, trying again in 10s...'
+                    time.sleep(10.0)
+            self.cursor = result.cursor
+            id_to_name, deleted_names = self.dropbox_entries_to_case_sensitive_names(result.entries)
+            for d in result.entries:
+                if not isinstance(d, FileMetadata):
+                    continue
+
+                # TODO: This retry pattern exists a lot of places, wrap it in a context
+                while True:
+                    try:
+                        self.client.files_delete(d.path_lower)
+                        break
+                    except dropbox.exceptions.HttpError as err:
+                        print err
+                        print 'Failed deleting on initial clean on dropbox, trying again in 10s...'
+                        time.sleep(10.0)
+                    except dropbox.exceptions.ApiError as err:
+                        print "Error when marking file as deleted during initial clean... " + str(err)
+                        break
+            shutil.rmtree(self.local_folder)
+            ensure_dir(self.local_folder)
+
+
     def initial_sync(self):
         with self.sync_context():
             print 'Starting INITIAL Sync'
-            result = self.client.files_list_folder('', recursive=True, include_deleted=True)
+            while True:
+                try:
+                    result = self.client.files_list_folder('', recursive=True, include_deleted=True)
+                    break
+                except dropbox.exceptions.HttpError as err:
+                    print err
+                    print 'Failed getting initial file list, trying again in 10s...'
+                    time.sleep(10.0)
             self.cursor = result.cursor
             self.sync_folder_with_entries(result.entries)
             print 'Ending INITIAL Sync'
@@ -83,7 +138,14 @@ class DropboxSyncer(object):
             return
         with self.sync_context():
             print 'Syncing...'
-            result = self.client.files_list_folder_continue(self.cursor)
+            while True:
+                try:
+                    result = self.client.files_list_folder_continue(self.cursor)
+                    break
+                except dropbox.exceptions.HttpError as err:
+                    print err
+                    print 'Failed getting sync file list, trying again in 10s...'
+                    time.sleep(10.0)
             self.cursor = result.cursor
             self.sync_folder_with_entries(result.entries)
             self.pending_sync = False
