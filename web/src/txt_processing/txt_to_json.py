@@ -55,13 +55,14 @@ class TaskObject(object):
         self.indention_level = indention_level
         self.id_string = None
         self.children = []
+        self.trailing_space = 0
+        self.order_in_list = 0
+
         if d is None:
             self.is_root = True
             self.name = "ROOT"
             return
         self.is_root = False
-        self.trailing_space = 0
-        self.order_in_list = 0
 
         self.status = convert_prefix_to_state(d['type'])
         self.deferred_to = string_to_isoformat(string_or_none_from_dict(d, 'deferred_to'))
