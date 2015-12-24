@@ -8,7 +8,7 @@ cal = parsedatetime.Calendar()
 import iso8601
 
 # name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?P<deferred_to>(?:.*?:|))|(?P<type>XXX)|(?P<type>->)(?P<delegated_to>(?:.*?:|))|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
-name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
+name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):\s|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):\s|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
 # name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):|)|(?P<type>-)|(?P<type>x)|(?P<type>))\s*?(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
 
 # indention

@@ -69,8 +69,6 @@ def convert_json_to_txt(in_json):
     in_json.sort(key=lambda o: o.get('order_in_list', 0))
     for obj in in_json:
         append_obj_to_string_list(out_text_list, obj, 0)
-        if len(val_or_default_from_dict(obj, 'children', [])) > 0:
-            out_text_list.append('')
     return '\n'.join(out_text_list)
 
 

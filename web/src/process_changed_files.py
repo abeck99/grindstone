@@ -66,7 +66,18 @@ if __name__ == "__main__":
         local_folder = dropbox_sync.dropbox_folder
         local_folder = os.path.abspath(local_folder)
         os_project_name = project_name.replace('/', os.path.sep)
-        return os.path.join(local_folder, os_project_name)
+        return os.path.join(local_folder, os_project_name) + '.txt'
+
+    def deflatten_children(dest_obj_list, source_obj_list, parent_id=None):
+        obj_list = [obj for obj in source_obj_list if obj.get('parent', None) == parent_id]
+
+        for obj in obj_list:
+            dest_obj_list.append(obj)
+            source_obj_list.remove(obj)
+            children_list = []
+            obj['children'] = children_list
+            deflatten_children(children_list, source_obj_list, obj['_id'])
+
 
     def save_all_to_dropbox():
         objs_by_project = collections.defaultdict(list)
@@ -103,6 +114,7 @@ if __name__ == "__main__":
                 os.remove(project_filename)
             except OSError:
                 pass
+            del ids_saved_to_dropbox[project_file_to_remove]
 
         print 'Projects to write from db: ' + str(projects_from_db)
 
@@ -115,17 +127,35 @@ if __name__ == "__main__":
                 print 'No changes so skipping ' + project_name
                 continue
 
+            obj_list = []
+            project_list_copy = list(project_obj_list)
+            deflatten_children(obj_list, project_list_copy)
+
+            if len(project_list_copy) > 0:
+                print 'Not all items were found! This is an issue'
+
             print 'Saving project: ' + str(project_name)
-            content_str = txt_processing.convert_json_to_txt(project_obj_list)
+            content_str = txt_processing.convert_json_to_txt(obj_list)
+
             project_filename = project_name_to_local_filename(project_name)
 
             dropbox_sync.ensure_file_location(project_filename)
-            with open(project_filename+'.txt', 'w') as f:
+            with open(project_filename, 'w') as f:
                 f.write(content_str)
             for obj in project_obj_list:
                 dropbox_revisions[obj['_id']] = obj['_rev']
             ids_saved_to_dropbox[project_name] = ids
 
+    def flatten_children(dest_obj_list, project_name, obj_list, parent_id=None):
+        for obj in obj_list:
+            update_object_with_project_info(project_name, obj)
+            obj['parent'] = parent_id
+            dest_obj_list.append(obj)
+
+            if 'children' in obj:
+                children_objects = obj['children']
+                del obj['children']
+                flatten_children(dest_obj_list, project_name, children_objects, obj['_id'])
 
     def changes_from_dropbox(notif):
         obj_list = []
@@ -133,7 +163,7 @@ if __name__ == "__main__":
             with open(full_filename) as f:
                 root_object = txt_processing.convert_txt_to_json(f.read())
 
-            obj_list.extend([update_object_with_project_info(project_name, obj) for obj in root_object])
+            flatten_children(obj_list, project_name, root_object)
 
         old_obj_ids = set([obj['doc']['_id'] for obj in couch_db.all() if 'project' in obj['doc']])
         new_obj_ids = set([obj['_id'] for obj in obj_list])
