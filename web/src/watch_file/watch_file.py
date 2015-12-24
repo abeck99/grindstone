@@ -13,13 +13,12 @@ class ObserveFileChange(Observer):
 
     def on_next(self, x):
         self.action(list(set(x)))
-        print("Got: %s" % x)
-        
+
     def on_error(self, e):
-        print("Got error: %s" % e)
-        
+        pass
+
     def on_completed(self):
-        print("Sequence completed")
+        pass
 
 
 class FileUpdatedSignal(FileSystemEventHandler):

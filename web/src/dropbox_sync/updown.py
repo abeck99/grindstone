@@ -9,6 +9,10 @@ import hashlib
 import contextlib
 
 from rx.subjects import Subject
+import logging
+
+log = logging.getLogger("DropboxSync")
+
 
 def ensure_file_location(path):
     dirname = os.path.dirname(path)
@@ -25,6 +29,7 @@ class FilesChangedFromServerNotification(object):
         self.root_folder = root_folder
         self.added = added
         self.removed = removed
+
 
 # TODO: Make this use gevents
 class DropboxSyncer(object):
@@ -81,20 +86,20 @@ class DropboxSyncer(object):
                 yield
                 break
             except dropbox.exceptions.HttpError as err:
-                print err
-                print str(debug_context) + 'trying again in 10s...'
+                log.error(err)
+                log.info(str(debug_context) + 'trying again in 10s...')
                 time.sleep(10.0)
 
     def clean_dropbox(self):
         with self.sync_context():
-            print 'Starting INITIAL CLEAN TREE'
+            log.info('Starting INITIAL CLEAN TREE')
             while True:
                 try:
                     result = self.client.files_list_folder('', recursive=True, include_deleted=True)
                     break
                 except dropbox.exceptions.HttpError as err:
-                    print err
-                    print 'Failed getting initial file list, trying again in 10s...'
+                    log.error(err)
+                    log.info('Failed getting initial file list, trying again in 10s...')
                     time.sleep(10.0)
             self.cursor = result.cursor
             self.dropbox_entries_to_case_sensitive_names(result.entries)
@@ -109,44 +114,47 @@ class DropboxSyncer(object):
                         self.ignore_next_delete.append(d.path_lower)
                         break
                     except dropbox.exceptions.HttpError as err:
-                        print err
-                        print 'Failed deleting on initial clean on dropbox, trying again in 10s...'
+                        log.error(err)
+                        log.info('Failed deleting on initial clean on dropbox, trying again in 10s...')
                         time.sleep(10.0)
                     except dropbox.exceptions.ApiError as err:
-                        print "Error when marking file as deleted during initial clean... " + str(err)
+                        log.error("Error when marking file as deleted during initial clean... " + str(err))
                         break
-            print 'Removing root tree for initial clean'
-            shutil.rmtree(self.local_folder)
+            log.info('Removing root tree for initial clean')
+            try:
+                shutil.rmtree(self.local_folder)
+            except OSError:
+                pass
             ensure_dir(self.local_folder)
 
     def initial_sync(self):
         with self.sync_context():
-            print 'Starting INITIAL Sync'
+            log.info('Starting INITIAL Sync')
             while True:
                 try:
                     result = self.client.files_list_folder('', recursive=True, include_deleted=True)
                     break
                 except dropbox.exceptions.HttpError as err:
-                    print err
-                    print 'Failed getting initial file list, trying again in 10s...'
+                    log.error(err)
+                    log.info('Failed getting initial file list, trying again in 10s...')
                     time.sleep(10.0)
             self.cursor = result.cursor
             self.sync_folder_with_entries(result.entries)
-            print 'Ending INITIAL Sync'
+            log.info('Ending INITIAL Sync')
 
     def sync(self):
         if self.pending_sync:
-            print "Well that's nice, it seems to work with a single thread somehow?"
+            log.info("Well that's nice, it seems to work with a single thread somehow?")
             return
         with self.sync_context():
-            print 'Syncing...'
+            log.info('Syncing...')
             while True:
                 try:
                     result = self.client.files_list_folder_continue(self.cursor)
                     break
                 except dropbox.exceptions.HttpError as err:
-                    print err
-                    print 'Failed getting sync file list, trying again in 10s...'
+                    log.error(err)
+                    log.info('Failed getting sync file list, trying again in 10s...')
                     time.sleep(10.0)
             self.cursor = result.cursor
             self.sync_folder_with_entries(result.entries)
@@ -192,10 +200,10 @@ class DropboxSyncer(object):
                 pass
             if remote_deleted_name in self.ignore_next_delete:
                 self.ignore_next_delete.remove(remote_deleted_name)
-                print 'Skipping file since it was triggered by us: ' + str(remote_deleted_name)
+                log.info('Skipping file since it was triggered by us: ' + str(remote_deleted_name))
                 continue
 
-            print 'Attempting to delete: ' + local_deleted_name
+            log.info('Attempting to delete: ' + local_deleted_name)
             if files_in_path is not None:
                 for existing_file_name in files_in_path:
                     if existing_file_name.lower() == filename.lower():
@@ -205,7 +213,7 @@ class DropboxSyncer(object):
                             shutil.rmtree(full_path, ignore_errors=True)
                         else:
                             os.remove(full_path)
-                        print '\tDelete Success!'
+                        log.info('\tDelete Success!')
                         if full_path in self.files_synced_from_dropbox:
                             del self.files_synced_from_dropbox[full_path]
                         files_deleted_from_remote.append(local_deleted_name)
@@ -217,16 +225,16 @@ class DropboxSyncer(object):
             skip = False
             while True:
                 try:
-                    print 'Downloading: ' + remote_name
+                    log.info('Downloading: ' + remote_name)
                     md, res = self.client.files_download(remote_name)
                     break
                 except dropbox.exceptions.HttpError as err:
-                    print err
-                    print 'Failed downloading from dropbox, trying again in 10s...'
+                    log.error(err)
+                    log.info('Failed downloading from dropbox, trying again in 10s...')
                     time.sleep(10.0)
                 except dropbox.exceptions.ApiError as err:
                     skip = True
-                    print "Error when downloading, skipping.. " + str(err)
+                    log.error("Error when downloading, skipping.. " + str(err))
                     break
             if skip:
                 continue
@@ -242,21 +250,21 @@ class DropboxSyncer(object):
                     current_hash = hashlib.sha224(local_data).hexdigest()
                     local_hash_changed = cached_hash is None or cached_hash != current_hash
                     if local_hash_changed and local_data != data:
-                        print "Conflict with existing file! Backing it up"
+                        log.error("Conflict with existing file! Backing it up")
                         while True:
                             try:
-                                print 'Uploading backup of: ' + remote_name
+                                log.info('Uploading backup of: ' + remote_name)
                                 self.client.files_upload(local_data, remote_name + self.temp_extension('CONFLICT'),
                                                          dropbox.files.WriteMode.add,
                                                          False,
                                                          datetime.datetime(*time.gmtime(mtime)[:6]), False)
                                 break
                             except dropbox.exceptions.HttpError as err:
-                                print err
-                                print 'Failed uploading conflict file to dropbox, trying again in 10s...'
+                                log.error(err)
+                                log.info('Failed uploading conflict file to dropbox, trying again in 10s...')
                                 time.sleep(10.0)
                             except dropbox.exceptions.ApiError as err:
-                                print "Error when backing up, just saving locally... " + str(err)
+                                log.warning("Error when backing up, just saving locally... " + str(err))
                                 with open(local_name + self.temp_extension('CONFLICT'), 'wb') as f1:
                                     f1.write(local_data)
                                 break
@@ -265,7 +273,7 @@ class DropboxSyncer(object):
                 with open(local_name, 'wb') as f:
                     f.write(data)
             except OSError:
-                print "Failed saving file!"
+                log.critical("Failed saving file!")
                 pass
             data_hash = hashlib.sha224(data).hexdigest()
             if self.files_synced_from_dropbox.get(local_name, None) != data_hash:
@@ -295,17 +303,17 @@ class DropboxSyncer(object):
 
                     while True:
                         try:
-                            print 'Uploading: ' + server_path
+                            log.info('Uploading: ' + server_path)
                             self.client.files_upload(data, server_path, mode, False,
                                                      datetime.datetime(*time.gmtime(mtime)[:6]), False)
                             self.files_synced_from_dropbox[fn] = existing_file_hash
                             break
                         except dropbox.exceptions.HttpError as err:
-                            print err
-                            print 'Failed uploading to dropbox, trying again in 10s...'
+                            log.error(err)
+                            log.info('Failed uploading to dropbox, trying again in 10s...')
                             time.sleep(10.0)
                         except dropbox.exceptions.ApiError as err:
-                            print "Error when uploading (probably a mode issue?)... Saving a backup" + str(err)
+                            log.warning("Error when uploading (probably a mode issue?)... Saving a backup" + str(err))
                             with open(fn + self.temp_extension('FAILED_UPLOAD'), 'wb') as f1:
                                 f1.write(data)
                             break
@@ -314,7 +322,7 @@ class DropboxSyncer(object):
         for fn in files_from_dropbox:
             if not os.path.exists(fn):
                 remote_name = self.local_to_remote_name(fn)
-                print "Deleting remote file: " + remote_name
+                log.info("Deleting remote file: " + remote_name)
                 while True:
                     try:
                         self.client.files_delete(remote_name)
@@ -322,11 +330,11 @@ class DropboxSyncer(object):
                         del self.files_synced_from_dropbox[fn]
                         break
                     except dropbox.exceptions.HttpError as err:
-                        print err
-                        print 'Failed deleting on dropbox, trying again in 10s...'
+                        log.error(err)
+                        log.info('Failed deleting on dropbox, trying again in 10s...')
                         time.sleep(10.0)
                     except dropbox.exceptions.ApiError as err:
-                        print "Error when marking file as deleted... " + str(err)
+                        log.warning("Error when marking file as deleted... " + str(err))
                         break
 
         if len(files_added_from_remote) > 0 or len(files_deleted_from_remote) > 0:

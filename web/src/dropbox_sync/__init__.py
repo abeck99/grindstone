@@ -2,6 +2,9 @@ import dropbox
 import os
 from updown import DropboxSyncer
 from settings import settings
+import logging
+
+log = logging.getLogger("DropboxSync")
 
 
 app_key = settings['dropbox-app-key']
@@ -35,11 +38,10 @@ from rx import Observable, Observer
 def sync_dropbox_task(start_from_clean_tree):
     syncer = DropboxSyncer(dropbox_folder, access_token, start_from_clean_tree)
     def sync(x):
-        syncer.sync()
-        # try:
-        #     syncer.sync()
-        # except Exception as e:
-        #     print "Error in main sync loop! " + str(e)
+        try:
+            syncer.sync()
+        except Exception as e:
+            log.critical("Error in main sync loop! " + str(e))
 
     return Observable.timer(5000, 5000).subscribe(sync), syncer.changes_from_remote_signal
 

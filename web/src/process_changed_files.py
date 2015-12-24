@@ -4,11 +4,18 @@ if __name__ == "__main__":
     import os
     import pycouchdb
     import pycouchdb.exceptions
-    from settings import settings
-    import shutil
+    from settings import settings, logging_settings
     import collections
     from rx.subjects import Subject
     import reactive
+    import logging
+    import logging.config
+
+    log_file = logging_settings.get('handlers', {}).get('file', {}).get('filename', None)
+    if log_file is not None:
+        dropbox_sync.ensure_file_location(log_file)
+    logging.config.dictConfig(logging_settings)
+    log = logging.getLogger("Main")
 
     couch_server = pycouchdb.Server(settings['couchdb-server'])
     try:
@@ -108,7 +115,7 @@ if __name__ == "__main__":
         projects_previously_saved = set(ids_saved_to_dropbox.keys())
         project_files_to_remove = projects_previously_saved-projects_from_db
         for project_file_to_remove in project_files_to_remove:
-            print 'Removing project from dropbox: ' + str(project_file_to_remove)
+            log.info('Removing project from dropbox: ' + str(project_file_to_remove))
             project_filename = project_name_to_local_filename(project_file_to_remove)
             try:
                 os.remove(project_filename)
@@ -116,7 +123,7 @@ if __name__ == "__main__":
                 pass
             del ids_saved_to_dropbox[project_file_to_remove]
 
-        print 'Projects to write from db: ' + str(projects_from_db)
+        log.info('Projects to write from db: ' + str(projects_from_db))
 
 
         # Save objects to file, checking if it needs updating first (actual file may still have unprocessed changes)
@@ -124,7 +131,7 @@ if __name__ == "__main__":
             ids = set([obj['_id'] for obj in project_obj_list])
             if ids == ids_saved_to_dropbox[project_name] and \
                     all([object_matches_dropbox_revision(obj) for obj in project_obj_list]):
-                print 'No changes so skipping ' + project_name
+                log.info('No changes so skipping ' + project_name)
                 continue
 
             obj_list = []
@@ -132,9 +139,9 @@ if __name__ == "__main__":
             deflatten_children(obj_list, project_list_copy)
 
             if len(project_list_copy) > 0:
-                print 'Not all items were found! This is an issue'
+                log.critical('Not all items were found! This is an issue')
 
-            print 'Saving project: ' + str(project_name)
+            log.info('Saving project: ' + str(project_name))
             content_str = txt_processing.convert_json_to_txt(obj_list)
 
             project_filename = project_name_to_local_filename(project_name)
@@ -204,7 +211,7 @@ if __name__ == "__main__":
             # Or track changes from that feed update and predict when this is going to happen?
             # And track hashes so we can tell if an object has changed?
             # IS there too much overhead here or is this normal?
-            print 'Adding: ' + str(_id)
+            log.info('Adding: ' + str(_id))
             try:
                 couch_db.save(obj)
             except pycouchdb.exceptions.Conflict as c:
@@ -213,7 +220,7 @@ if __name__ == "__main__":
                 conflict_id = obj['_id'] + get_uuid() + '-DROPBOX_CONFLICT'
                 obj['_id'] = conflict_id
                 couch_db.save(obj)
-                print c
+                log.exception(c)
 
         save_all_to_dropbox()
 
@@ -221,7 +228,7 @@ if __name__ == "__main__":
         inner_sync()
         updating_dropbox_count[0] -= len(notifs)
         if updating_dropbox_count[0] != 0:
-            print 'Bad clean up!'
+            log.critical('Bad clean up!')
 
     def increment_updating_dropbox_count(notif):
         updating_dropbox_count[0] += 1
@@ -250,7 +257,7 @@ if __name__ == "__main__":
         if updating_dropbox_count[0] > 0:
             return
         dbs = set(dbs)
-        print 'DBs Changed: ' + str(dbs)
+        log.debug('DBs Changed: ' + str(dbs))
 
         save_all_to_dropbox()
 
@@ -272,7 +279,7 @@ if __name__ == "__main__":
             if 'rev' in change:
                 server_revisions[message['id']] = change['rev']
 
-        print 'This guy: '+str(message)
+        log.debug('Message from couchdb: '+str(message))
         db_changes_signal.on_next(db)
 
     while True:
@@ -281,36 +288,3 @@ if __name__ == "__main__":
         else:
             couch_db.changes_feed(feed_reader, since=server_last_seq[0])
 
-    """
-    path = sys.argv[1]
-    repo = git.repo.Repo(path.replace('$HOME', '~'))
-    
-    def process_files(file_list):
-        print 'Updated: ' + str(file_list)
-        human_readable_timestamp = datetime.datetime.now(
-            ).strftime('%Y-%m-%d %H:%M:%S')
-        repo.git.add('-A')
-        repo.index.commit('Pre Process: ' + human_readable_timestamp)
-
-        for fn in file_list:
-            try:
-                with open(fn) as f:
-                    out_json = txt_processing.convert_txt_to_json(f.read())
-                with open(fn, 'w') as f:
-                    f.write(txt_processing.convert_json_to_txt(out_json))
-            except IOError as e:
-                print 'Error: ' + str(e)
-
-        repo.git.add('-A')
-        repo.index.commit('Post Process: ' + human_readable_timestamp)
-
-    observer = watch_file.new_observer(process_files, path)
-    observer.start()
-
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
-    """

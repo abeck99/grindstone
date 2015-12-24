@@ -78,10 +78,10 @@ class TaskObject(object):
         self.id_string = id_string
 
         if len(d['_tags']) > 0 and len(d['_tags_alt']) > 0:
-            print d
+            log.error(d)
             raise MalformedTextException('Error parsing, only one ~() can exist: Line ' + str(line_no))
         if any([len(d[k].strip()) > 0 for k in ['filler_a', 'filler_b', 'filler_c', 'filler_d']]):
-            print d
+            log.error(d)
             raise MalformedTextException('Error parsing, Misplaced ~: Line ' + str(line_no))
         self.blocked_by = []
         self.description = []
