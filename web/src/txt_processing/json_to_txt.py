@@ -30,6 +30,7 @@ def append_obj_to_string_list(in_array, obj, level):
     tags = ', '.join(val_or_default_from_dict(obj, 'tags', []))
     description = val_or_default_from_dict(obj, 'description', '')
     blocked_by = ', '.join(val_or_default_from_dict(obj, 'blocked_by', []))
+    trailing_space = int(val_or_default_from_dict(obj, 'trailing_space', 0))
 
     indent_prefix = ''.join([indent_string]*level)
 
@@ -54,13 +55,18 @@ def append_obj_to_string_list(in_array, obj, level):
     if len(blocked_by) > 0:
         in_array.append(indent_prefix+'BLOCKED BY: '+blocked_by)
 
+    in_array.extend([indent_prefix]*trailing_space)
+
     # TODO: warn on infinite loops with the parent...
-    for child in val_or_default_from_dict(obj, 'children', []):
+    children = val_or_default_from_dict(obj, 'children', [])
+    children.sort(key=lambda o: o.get('order_in_list', 0))
+    for child in children:
         append_obj_to_string_list(in_array, child, level+1)
 
 
 def convert_json_to_txt(in_json):
     out_text_list = []
+    in_json.sort(key=lambda o: o.get('order_in_list', 0))
     for obj in in_json:
         append_obj_to_string_list(out_text_list, obj, 0)
         if len(val_or_default_from_dict(obj, 'children', [])) > 0:

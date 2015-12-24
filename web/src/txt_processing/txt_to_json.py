@@ -60,6 +60,8 @@ class TaskObject(object):
             self.name = "ROOT"
             return
         self.is_root = False
+        self.trailing_space = 0
+        self.order_in_list = 0
 
         self.status = convert_prefix_to_state(d['type'])
         self.deferred_to = string_to_isoformat(string_or_none_from_dict(d, 'deferred_to'))
@@ -90,6 +92,10 @@ class TaskObject(object):
     def push_blocked_by(self, blocked_by):
         self.blocked_by.extend([b.strip() for b in blocked_by.split(',') if len(b.strip()) > 0])
     def to_dict(self):
+        i = 0
+        for child in self.children:
+            child.order_in_list = i
+            i += 1
         if self.is_root:
             return [c.to_dict() for c in self.children]
         else:
@@ -103,6 +109,8 @@ class TaskObject(object):
                 "tags": self.tags,
                 "description": "\n".join(self.description),
                 "blocked_by": self.blocked_by,
+                "order_in_list": self.order_in_list,
+                "trailing_space": self.trailing_space,
             }
 
 
@@ -141,6 +149,7 @@ def convert_txt_to_json(in_str):
         line = lines[i]
         i += 1
         if len(line.strip()) == 0:
+            object_list.current_object().trailing_space += 1
             continue
 
         match = regex.fullmatch(name_regex, line)

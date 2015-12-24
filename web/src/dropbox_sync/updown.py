@@ -192,7 +192,7 @@ class DropboxSyncer(object):
                 pass
             if remote_deleted_name in self.ignore_next_delete:
                 self.ignore_next_delete.remove(remote_deleted_name)
-                print 'Skipping file since it was triggered by us'
+                print 'Skipping file since it was triggered by us: ' + str(remote_deleted_name)
                 continue
 
             print 'Attempting to delete: ' + local_deleted_name
