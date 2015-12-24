@@ -157,7 +157,7 @@ if __name__ == "__main__":
                 del obj['children']
                 flatten_children(dest_obj_list, project_name, children_objects, obj['_id'])
 
-    def changes_from_dropbox(notif):
+    def inner_sync():
         obj_list = []
         for project_name, full_filename in projects_saved():
             with open(full_filename) as f:
@@ -216,12 +216,30 @@ if __name__ == "__main__":
                 print c
 
         save_all_to_dropbox()
-        updating_dropbox_count[0] -= len(notif)
+
+    def changes_from_dropbox(notifs):
+        inner_sync()
+        updating_dropbox_count[0] -= len(notifs)
         if updating_dropbox_count[0] != 0:
             print 'Bad clean up!'
 
-    def increment_updating_dropbox_count(x):
+    def increment_updating_dropbox_count(notif):
         updating_dropbox_count[0] += 1
+
+        should_reload = False
+        for fn in notif.added:
+            try:
+                with open(fn) as f:
+                    s = f.read()
+                if '::RELOAD::' in s:
+                    should_reload = True
+                    with open(fn, 'w') as f:
+                        f.write(s.replace('::RELOAD::', ''))
+            except OSError:
+                pass
+
+        if should_reload:
+            inner_sync()
 
     changes_signal.subscribe(increment_updating_dropbox_count)
     changes_signal.accumulated_debounce(30.0).subscribe(changes_from_dropbox)

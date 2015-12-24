@@ -3,6 +3,10 @@ in local.ini, add to [httpd]
 port = 5984
 bind_address = 0.0.0.0
 
+
+sudo dpkg-reconfigure tzdata
+
+
 sudo service couchdb restart
 cd /web-app-deps/fauxton
 sudo grunt dev
