@@ -106,6 +106,7 @@ if __name__ == "__main__":
 
         print 'Projects to write from db: ' + str(projects_from_db)
 
+
         # Save objects to file, checking if it needs updating first (actual file may still have unprocessed changes)
         for project_name, project_obj_list in objs_by_project.iteritems():
             ids = set([obj['_id'] for obj in project_obj_list])
@@ -140,8 +141,14 @@ if __name__ == "__main__":
         removed_ids = old_obj_ids-new_obj_ids
 
         for obj_id in removed_ids:
-            print 'Deleting db doc: ' + obj_id
-            couch_db.delete(obj_id)
+            if obj_id in dropbox_revisions:
+                try:
+                    previous_obj = couch_db.get(obj_id)
+                except pycouchdb.exceptions.NotFound:
+                    previous_obj = None
+
+                if previous_obj is not None and previous_obj['_rev'] == dropbox_revisions[obj_id]:
+                    couch_db.delete(obj_id)
 
         for obj in obj_list:
             _id = obj['_id']

@@ -268,7 +268,7 @@ class DropboxSyncer(object):
                 print "Failed saving file!"
                 pass
             data_hash = hashlib.sha224(data).hexdigest()
-            if self.files_synced_from_dropbox[local_name] != data_hash:
+            if self.files_synced_from_dropbox.get(local_name, None) != data_hash:
                 self.files_synced_from_dropbox[local_name] = hashlib.sha224(data).hexdigest()
                 files_added_from_remote.append(local_name)
 
