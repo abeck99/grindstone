@@ -10,6 +10,7 @@ if __name__ == "__main__":
     import reactive
     import logging
     import logging.config
+    import numconv
 
     log_file = logging_settings.get('handlers', {}).get('file', {}).get('filename', None)
     if log_file is not None:
@@ -23,27 +24,38 @@ if __name__ == "__main__":
     except pycouchdb.exceptions.NotFound:
         couch_db = couch_server.create(settings['couchdb-tasks-database'])
 
-    updating_dropbox_count = [0]
+    uuid_obj_id = 'uuid-count'
 
-    file_name = '.uuids'
+    def get_uuid_obj():
+        try:
+            return couch_db.get(uuid_obj_id)
+        except pycouchdb.exceptions.NotFound:
+            # TODO: Initial value should come from config, and we can probably set ranges in some config file
+            return {
+                '_id': uuid_obj_id,
+                'current': 1000,
+            }
+        raise RuntimeError('Something bad happened!')
+
+    def num_to_uuid(i):
+        return numconv.NumConv(85).int2str(i)
+
+    # TODO: this is fine for single threaded but we'll need to be more original
+    # or just bite the bullet and do normal uuids
+    def reserve_uuids(count):
+        uuid_obj = get_uuid_obj()
+        cur = uuid_obj['current']
+        uuid_obj['current'] += count
+        couch_db.save(uuid_obj)
+
+        for i in xrange(cur, cur+count):
+            yield num_to_uuid(i)
+
     def get_uuid():
-        if os.path.exists(file_name):
-            with open(file_name, 'r') as f:
-                uuid = int(f.read())
-        else:
-            uuid = 0
-        uuid += 1
-        with open(file_name, 'w') as f:
-            f.write(str(uuid))
-        return format(uuid, 'x')
+        return reserve_uuids(1).next()
 
+    updating_dropbox_count = [0]
     dropbox_disposable, changes_signal = dropbox_sync.sync_dropbox_task(True)
-
-    def update_object_with_project_info(project_name, obj):
-        obj['project'] = project_name
-        if obj['_id'] is None:
-            obj['_id'] = get_uuid()
-        return obj
 
     server_revisions = {}
     dropbox_revisions = {}
@@ -153,16 +165,16 @@ if __name__ == "__main__":
                 dropbox_revisions[obj['_id']] = obj['_rev']
             ids_saved_to_dropbox[project_name] = ids
 
-    def flatten_children(dest_obj_list, project_name, obj_list, parent_id=None):
+    def flatten_children(dest_obj_list, project_name, obj_list, parent=None):
         for obj in obj_list:
-            update_object_with_project_info(project_name, obj)
-            obj['parent'] = parent_id
+            obj['project'] = project_name
+            obj['parent'] = parent
             dest_obj_list.append(obj)
 
             if 'children' in obj:
                 children_objects = obj['children']
                 del obj['children']
-                flatten_children(dest_obj_list, project_name, children_objects, obj['_id'])
+                flatten_children(dest_obj_list, project_name, children_objects, obj)
 
     def inner_sync():
         obj_list = []
@@ -171,6 +183,14 @@ if __name__ == "__main__":
                 root_object = txt_processing.convert_txt_to_json(f.read())
 
             flatten_children(obj_list, project_name, root_object)
+
+        objs_without_id = [obj for obj in obj_list if obj['_id'] is None]
+        uuid_iter = reserve_uuids(len(objs_without_id))
+        for obj in objs_without_id:
+            obj['_id'] = uuid_iter.next()
+        for obj in obj_list:
+            if obj['parent'] is not None:
+                obj['parent'] = obj['parent']['_id']
 
         old_obj_ids = set([obj['doc']['_id'] for obj in couch_db.all() if 'project' in obj['doc']])
         new_obj_ids = set([obj['_id'] for obj in obj_list])
@@ -196,6 +216,9 @@ if __name__ == "__main__":
 
                 try:
                     previous_obj = couch_db.get(_id)
+                    temp_obj = dict(previous_obj)
+                    temp_obj.update(obj)
+                    obj = temp_obj
                 except pycouchdb.exceptions.NotFound:
                     previous_obj = None
 
@@ -225,7 +248,11 @@ if __name__ == "__main__":
         save_all_to_dropbox()
 
     def changes_from_dropbox(notifs):
-        inner_sync()
+        try:
+            inner_sync()
+        except Exception as e:
+            log.critical('Something big happened!')
+            log.exception(e)
         updating_dropbox_count[0] -= len(notifs)
         if updating_dropbox_count[0] != 0:
             log.critical('Bad clean up!')
