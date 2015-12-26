@@ -87,6 +87,7 @@ if __name__ == "__main__":
         os_project_name = project_name.replace('/', os.path.sep)
         return os.path.join(local_folder, os_project_name) + '.txt'
 
+
     def deflatten_children(dest_obj_list, source_obj_list, parent_id=None):
         obj_list = [obj for obj in source_obj_list if obj.get('parent', None) == parent_id]
 
@@ -101,28 +102,23 @@ if __name__ == "__main__":
     def save_all_to_dropbox():
         objs_by_project = collections.defaultdict(list)
 
-        objs_to_save = []
-        for obj in couch_db.all():
-            obj = obj['doc']
-            if 'project' not in obj:
-                continue
+        all_objs = [obj['doc'] for obj in couch_db.all() if 'project' in obj['doc']]
+        objs_by_id = {obj['_id']: obj for obj in all_objs}
 
+        for obj in all_objs:
             objs_by_project[obj['project']].append(obj)
-            if False and obj['_rev'] != dropbox_revisions[obj['_id']]:
-                doc_revisions = couch_db.revisions(obj['_id'])
 
-                conflict_obj = obj.copy()
-                conflict_id = obj['_id'] + get_uuid() + '-COUCH_CONFLICT'
-                conflict_obj['_id'] = conflict_id
-                objs_to_save.append(conflict_obj)
+            for blocked_id in obj.get('blocks', []):
+                blocked_obj = objs_by_id[blocked_id]
+                if blocked_obj is not None:
+                    blocked_obj['blocked_by'] = blocked_obj.get('blocked_by', [])
+                    blocked_obj['blocked_by'].append(obj['_id'])
 
-        for obj in objs_to_save:
-            couch_db.save(obj)
+            obj_parents = obj.get('parents', [])
+            if len(obj_parents) > 0:
+                obj['parent'] = obj_parents[-1]
 
-        # if all dropbox revisions and contained ids match, do not write file
-        # (that way changes wont be overwritten often)
-
-        # keep track of projects written, if ids_saved_to_dropbox contains a project with things removed, delete the file
+        # TODO if response from 'all' doesn't match the current dropbox_revisions, what should we do?
         projects_from_db = set(objs_by_project.keys())
         projects_previously_saved = set(ids_saved_to_dropbox.keys())
         project_files_to_remove = projects_previously_saved-projects_from_db
@@ -165,32 +161,44 @@ if __name__ == "__main__":
                 dropbox_revisions[obj['_id']] = obj['_rev']
             ids_saved_to_dropbox[project_name] = ids
 
-    def flatten_children(dest_obj_list, project_name, obj_list, parent=None):
+    def flatten_children(dest_obj_list, project_name, obj_list, parents):
         for obj in obj_list:
             obj['project'] = project_name
-            obj['parent'] = parent
+            obj['parents'] = parents
+            obj['blocks'] = []
+
+            new_parents = parents + [obj]
+
             dest_obj_list.append(obj)
 
             if 'children' in obj:
                 children_objects = obj['children']
                 del obj['children']
-                flatten_children(dest_obj_list, project_name, children_objects, obj)
+                flatten_children(dest_obj_list, project_name, children_objects, new_parents)
 
     def inner_sync():
         obj_list = []
+
+        # TODO: This cleanup process could probably be improved...
         for project_name, full_filename in projects_saved():
             with open(full_filename) as f:
                 root_object = txt_processing.convert_txt_to_json(f.read())
 
-            flatten_children(obj_list, project_name, root_object)
+            flatten_children(obj_list, project_name, root_object, [])
 
         objs_without_id = [obj for obj in obj_list if obj['_id'] is None]
         uuid_iter = reserve_uuids(len(objs_without_id))
         for obj in objs_without_id:
             obj['_id'] = uuid_iter.next()
+
+        objs_by_id = {obj['_id']: obj for obj in obj_list}
         for obj in obj_list:
-            if obj['parent'] is not None:
-                obj['parent'] = obj['parent']['_id']
+            obj['parents'] = [sub_obj['_id'] for sub_obj in obj['parents']]
+            if 'blocked_by' in obj:
+                for blocking_obj in [objs_by_id.get(sub_obj_id, None) for sub_obj_id in obj['blocked_by']]:
+                    if blocking_obj is not None:
+                        blocking_obj['blocks'].append(obj['_id'])
+                del obj['blocked_by']
 
         old_obj_ids = set([obj['doc']['_id'] for obj in couch_db.all() if 'project' in obj['doc']])
         new_obj_ids = set([obj['_id'] for obj in obj_list])
@@ -215,6 +223,7 @@ if __name__ == "__main__":
                 obj['_rev'] = _rev
 
                 try:
+                    # TODO: Do we need to test _rev here, or just ask for forgiveness?
                     previous_obj = couch_db.get(_id)
                     temp_obj = dict(previous_obj)
                     temp_obj.update(obj)
@@ -234,12 +243,18 @@ if __name__ == "__main__":
             # Or track changes from that feed update and predict when this is going to happen?
             # And track hashes so we can tell if an object has changed?
             # IS there too much overhead here or is this normal?
+
+            # TODO Should this be bulk save with transactional guarentee?
+            # Perhaps we should just attempt to do a bulk update and if any fails, make a backup copy???
             log.info('Adding: ' + str(_id))
             try:
                 couch_db.save(obj)
             except pycouchdb.exceptions.Conflict as c:
                 # obj['needs_resolve'] = True
                 # obj['conflicting_object'] = couch_db.get(obj['id'])
+
+                # TODO: This will temporarily screw up children count, but will be fixed soon after by next
+                # dropbox sync...
                 conflict_id = obj['_id'] + get_uuid() + '-DROPBOX_CONFLICT'
                 obj['_id'] = conflict_id
                 couch_db.save(obj)
