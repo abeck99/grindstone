@@ -1,7 +1,49 @@
+TRY:
+grunt couchapp_deploy
+
+
 USe couchdb -c to find ini
 in local.ini, add to [httpd]
 port = 5984
 bind_address = 0.0.0.0
+
+
+and in [log]
+level = error
+
+
+In /etc/logrotate.d, add more sensible settings to logrotate, such as:
+/var/log/couchdb/*.log {
+       daily
+       rotate 7
+       copytruncate
+       delaycompress
+       compress
+       notifempty
+       missingok
+}
+
+And create /etc/logrotate.d/grindstone
+/web-app-settings/logs/*.log {
+       daily
+       rotate 7
+       copytruncate
+       delaycompress
+       compress
+       notifempty
+       missingok
+}
+
+
+disable_modules:
+  - mine
+for minion???
+
+
+
+http://107.170.132.129:5984/fauxton/_design/fauxton/index.html
+
+
 
 
 sudo dpkg-reconfigure tzdata

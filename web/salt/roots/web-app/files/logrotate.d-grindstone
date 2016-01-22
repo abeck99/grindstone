@@ -1,0 +1,10 @@
+/web-app-settings/logs/*.log {
+       su grindstone grindstone
+       daily
+       rotate 7
+       copytruncate
+       delaycompress
+       compress
+       notifempty
+       missingok
+}

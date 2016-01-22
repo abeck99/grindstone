@@ -8,8 +8,8 @@ cal = parsedatetime.Calendar()
 import iso8601
 
 # name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?P<deferred_to>(?:.*?:|))|(?P<type>XXX)|(?P<type>->)(?P<delegated_to>(?:.*?:|))|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
-name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):\s|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):\s|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
-# name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):|)|(?P<type>-)|(?P<type>x)|(?P<type>))\s*?(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
+# name_regex = r'^(?P<indention>\s*)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):\s|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):\s|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
+name_regex = r'^(?P<indention>\s*)(?:(?P<list_num>\d*)|)(?P<_type>(?P<type>\?)|(?P<type>//)|(?P<type>\.\.\.)(?:(?P<deferred_to>(?:.*?)):\s|)|(?P<type>XXX)|(?P<type>->)(?:(?P<delegated_to>(?:.*?)):\s|)|(?P<type>-)|(?P<type>x)|(?P<type>))(?P<name>[^~]*)(?P<_tags>~\((?P<tags>.*?)\)|)(?P<filler_a>[^~]*)(?P<_ID>~\[(?P<ID>.*?)\]|)(?P<filler_b>[^~]*)(?P<filler_c>[^~]*)(?P<_tags_alt>~\((?P<tags>.*?)\)|)(?P<filler_d>.*)$'
 
 # indention
 # type
@@ -65,6 +65,8 @@ class TaskObject(object):
         self.is_root = False
 
         self.status = convert_prefix_to_state(d['type'])
+        self.is_list = string_or_none_from_dict(d, 'list_num') is not None
+
         self.deferred_to = string_to_isoformat(string_or_none_from_dict(d, 'deferred_to'))
         self.delegated_to = string_or_none_from_dict(d, 'delegated_to')
         self.name = string_or_none_from_dict(d, 'name')
@@ -84,35 +86,46 @@ class TaskObject(object):
         if any([len(d[k].strip()) > 0 for k in ['filler_a', 'filler_b', 'filler_c', 'filler_d']]):
             log.error(d)
             raise MalformedTextException('Error parsing, Misplaced ~: Line ' + str(line_no))
-        self.blocked_by = []
+        self.blocked_by = set([])
         self.description = []
     def add_child(self, obj):
         self.children.append(obj)
     def push_description(self, desc):
         self.description.append(desc)
     def push_blocked_by(self, blocked_by):
-        self.blocked_by.extend([b.strip() for b in blocked_by.split(',') if len(b.strip()) > 0])
+        self.blocked_by.update(set([b.strip() for b in blocked_by.split(',') if len(b.strip()) > 0]))
     def to_dict(self):
         i = 0
         for child in self.children:
             child.order_in_list = i
             i += 1
         if self.is_root:
-            return [c.to_dict() for c in self.children]
+            return self.children_to_dict()
         else:
             return {
                 "name": self.name,
                 "_id": self.id_string,
-                "children": [c.to_dict() for c in self.children],
+                "children": self.children_to_dict(),
                 "status": self.status,
                 "deferred_to": self.deferred_to,
                 "delegated_to": self.delegated_to,
                 "tags": self.tags,
                 "description": "\n".join(self.description),
-                "blocked_by": self.blocked_by,
+                "blocked_by": list(self.blocked_by),
                 "order_in_list": self.order_in_list,
                 "trailing_space": self.trailing_space,
             }
+
+    def children_to_dict(self):
+        child_count = len(self.children)
+
+        # If any child indicates a list, make the whole thing a list
+        if any([c.is_list for c in self.children]):
+            for i in xrange(1, child_count):
+                child = self.children[i]
+                prev_child = self.children[i-1]
+                child.blocked_by.add(prev_child.id_string)
+        return [c.to_dict() for c in self.children]
 
 
 class ObjectList(object):

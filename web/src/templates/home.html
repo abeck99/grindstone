@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Grindstone Home</title>
+</head>
+<body>
+
+{% for link in links %}
+<p>
+<a href="{{ link.url }}">{{ link.title }}</a>
+</p>
+{% endfor %}
+
+</body>
+</html>

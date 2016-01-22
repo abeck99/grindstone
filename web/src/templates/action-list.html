@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Action List</title>
+</head>
+<body>
+
+{% for task in tasks %}
+<p>
+    <h3>{{ task.name }}</h3>
+    {{ task.description }} <a href="/tasks/{{ task.quoted_id }}/complete">Complete</a>
+</p>
+{% endfor %}
+
+</body>
+</html>

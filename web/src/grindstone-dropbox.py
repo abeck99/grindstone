@@ -171,10 +171,9 @@ if __name__ == "__main__":
 
             dest_obj_list.append(obj)
 
-            if 'children' in obj:
-                children_objects = obj['children']
-                del obj['children']
-                flatten_children(dest_obj_list, project_name, children_objects, new_parents)
+            obj['children'] = obj.get('children', [])
+            children_objects = obj['children']
+            flatten_children(dest_obj_list, project_name, children_objects, new_parents)
 
     def inner_sync():
         obj_list = []
@@ -194,6 +193,7 @@ if __name__ == "__main__":
         objs_by_id = {obj['_id']: obj for obj in obj_list}
         for obj in obj_list:
             obj['parents'] = [sub_obj['_id'] for sub_obj in obj['parents']]
+            obj['children'] = [sub_obj['_id'] for sub_obj in obj['children']]
             if 'blocked_by' in obj:
                 for blocking_obj in [objs_by_id.get(sub_obj_id, None) for sub_obj_id in obj['blocked_by']]:
                     if blocking_obj is not None:
