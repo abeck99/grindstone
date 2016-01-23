@@ -27,13 +27,13 @@ virtualenvwrapper:
 
 virtualenv-envs-1:
   file.append:
-    - name: /home/vagrant/.bashrc
+    - name: ~/.bashrc
     - text: export WORKON_HOME=$HOME/.virtualenvs
 
 
 virtualenv-envs-2:
   file.append:
-    - name: /home/vagrant/.bashrc
+    - name: ~/.bashrc
     - text: source /usr/local/bin/virtualenvwrapper.sh
     - require:
         - file: virtualenv-envs-1

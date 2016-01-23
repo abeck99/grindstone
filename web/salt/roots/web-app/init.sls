@@ -1,6 +1,5 @@
-/home/vagrant/.virtualenvs/app:
+/root/.virtualenvs/app:
     virtualenv.managed:
-        - user: vagrant
         - requirements: /web-app/requirements.txt
 
 ufw:
