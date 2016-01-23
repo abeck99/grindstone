@@ -38,7 +38,7 @@ if __name__ == "__main__":
         raise RuntimeError('Something bad happened!')
 
     def num_to_uuid(i):
-        return numconv.NumConv(85).int2str(i)
+        return numconv.NumConv(85, '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!.$%&()*:-;<=>?@^_`{|}~').int2str(i)
 
     # TODO: this is fine for single threaded but we'll need to be more original
     # or just bite the bullet and do normal uuids
@@ -148,15 +148,18 @@ if __name__ == "__main__":
 
             if len(project_list_copy) > 0:
                 log.critical('Not all items were found! This is an issue')
+                log.critical(str(project_list_copy))
 
             log.info('Saving project: ' + str(project_name))
             content_str = txt_processing.convert_json_to_txt(obj_list)
 
             project_filename = project_name_to_local_filename(project_name)
-
             dropbox_sync.ensure_file_location(project_filename)
             with open(project_filename, 'w') as f:
-                f.write(content_str)
+                try:
+                   f.write(content_str.encode('utf-8'))
+                except Exception as e:
+                   log.critical("Error Saving: " + str(e))
             for obj in project_obj_list:
                 dropbox_revisions[obj['_id']] = obj['_rev']
             ids_saved_to_dropbox[project_name] = ids
